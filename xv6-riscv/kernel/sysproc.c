@@ -5,6 +5,9 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "random.h"
+
+#include "pstat.h"
 
 uint64
 sys_exit(void)
@@ -96,4 +99,21 @@ sys_getfilenum(void)
   int pid;
   argint(0, &pid);
   return getfilenum(pid);
+}
+
+uint64
+sys_settickets(void)
+{
+  int number;
+  argint(0, &number);
+  return settickets(number);
+}
+
+uint64
+sys_getpinfo(void)
+{
+  struct pstat *p; 
+  argaddr(0,  (uint64*) &p); 
+  return getpinfo(p);
+
 }
