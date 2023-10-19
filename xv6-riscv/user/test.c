@@ -3,6 +3,7 @@
 #include "user/user.h"
 #include "kernel/fs.h"
 #include "kernel/fcntl.h"
+#include "kernel/pstat.h"
 
 void openFiles(int amount)
 {
@@ -30,7 +31,16 @@ main(int argc, char **argv)
     int x = 1;
     openFiles(x);
     printf("add one file: %d\n ", getfilenum(pid));
-    
+    int i = 0;
+
+    struct pstat ps;
+    while (i != NPROC){
+        settickets(10);
+        printf("ticks: %d \n ",ps.ticks[i]);
+        
+        printf(" tickets: %d \n", ps.tickets[i]);
+        i += 1;
+    }
 
     x = 2;
     openFiles(x);

@@ -5,6 +5,9 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "pstat.h"
+
+#include "random.h"
 
 struct cpu cpus[NCPU];
 
@@ -14,6 +17,8 @@ struct proc *initproc;
 
 int nextpid = 1;
 struct spinlock pid_lock;
+
+int totaltickets;
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
@@ -55,6 +60,7 @@ procinit(void)
       initlock(&p->lock, "proc");
       p->state = UNUSED;
       p->kstack = KSTACK((int) (p - proc));
+      p->tickets = 0;
   }
 }
 
@@ -124,6 +130,8 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->tickets = 1;
+  totaltickets += 1;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -169,6 +177,10 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  p->ticks = 0;
+  int num = p->tickets;
+  totaltickets -= num;
+  p->tickets = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -320,6 +332,8 @@ fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+  np->tickets = p-> tickets;
+
   release(&np->lock);
 
   return pid;
@@ -377,6 +391,7 @@ exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
+  
 
   release(&wait_lock);
 
@@ -446,30 +461,69 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
+  int seed = 123;
   
   c->proc = 0;
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
+
     intr_on();
+  
+
+
+  
+    int totaltick = 0;
+    for(p = proc; p < &proc[NPROC]; p++) {
+       acquire(&p->lock);
+
+      totaltick += p->tickets;
+
+      release(&p->lock);
+      
+    }
+
+
+
+    rand_init(seed);
+    int which = scaled_random(1, totaltick);
+    int temp = 0;
+   
 
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
+      
+
+      if(p->state == RUNNABLE) {
+
+        if( which <= (p->tickets + temp)){
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          p->ticks += 1;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+          release(&p->lock);
+          break;
+
+        }
+        if(which > (p->tickets+temp)){
+          temp += p->tickets;
+        }
+      } 
       release(&p->lock);
+      }
+
+
+      
     }
   }
-}
+
 
 // Switch to scheduler.  Must hold only p->lock
 // and have changed proc->state. Saves and restores
@@ -700,4 +754,59 @@ getfilenum(int pid)
     }
   }
   return -1; 
+}
+
+int
+settickets(int number)
+{
+  if (number < 1){
+    return -1;
+  }
+
+  struct proc *p = myproc();
+  
+  acquire(&p->lock);
+  p->tickets = number;
+  totaltickets += number;
+  release(&p->lock);
+
+  return 0;
+
+}
+
+
+
+int
+getpinfo(struct pstat *pFromUser)
+{
+  if(pFromUser == 0){
+    return -1;
+  }
+
+  struct proc *p;
+  int totaltick = 0;
+    for(p = proc; p < &proc[NPROC]; p++) {
+       acquire(&p->lock);
+
+      totaltick += p->tickets;
+
+      release(&p->lock);
+      
+    }
+
+  printf("%d", totaltick);
+  struct pstat pinfo; // local to kernel
+  for (int i = 0; i < NPROC; ++i)
+   {
+
+     pinfo.inuse[i] = (proc[i].state != UNUSED);
+     pinfo.pid[i] = proc[i].pid;
+     pinfo.tickets[i] = proc[i].tickets;
+     pinfo.ticks[i] = proc[i].ticks;
+ 
+   }
+ // now copy to user space
+  either_copyout(1, (uint64) pFromUser, &pinfo, sizeof(struct pstat));
+  return 0;
+
 }
