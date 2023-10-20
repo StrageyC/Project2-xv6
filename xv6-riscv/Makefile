@@ -136,7 +136,6 @@ UPROGS=\
 	$U/_helloworld\
 	$U/_test\
 	$U/_lotterytest\
-	$U/_p1\
 	$U/_p2\
 	$U/_p3\
 
