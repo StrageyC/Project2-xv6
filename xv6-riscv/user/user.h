@@ -26,6 +26,8 @@ int uptime(void);
 int getfilenum(int pid);
 int getpinfo(struct pstat*);
 int settickets(int);
+int pgaccess(int*, int, int*);
+
 
 // ulib.c
 int stat(const char*, struct stat*);

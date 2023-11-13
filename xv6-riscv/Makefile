@@ -138,6 +138,7 @@ UPROGS=\
 	$U/_lotterytest\
 	$U/_p2\
 	$U/_p3\
+	$U/_tester\
 
 
 fs.img: mkfs/mkfs README $(UPROGS)

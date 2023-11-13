@@ -6,6 +6,7 @@
 #include "defs.h"
 #include "fs.h"
 
+
 /*
  * the kernel's page table.
  */
@@ -436,4 +437,52 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+int level = 0;
+// talk to Connor
+void
+vmprint(pagetable_t pagetable)
+{
+  if (level == 0){
+    printf("page table %p\n", pagetable);
+  }
+
+  level = level + 1;
+
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    
+    if(pte & PTE_V){
+      for (int j = 0; j < level; j++){
+        printf(".. ");
+      }
+
+      uint64 child = PTE2PA(pte);
+      printf("%d: pte %p pa %p\n", i, pte, child);
+
+      if((pte & (PTE_R|PTE_W|PTE_X)) == 0){
+        vmprint((pagetable_t)child);
+        level = 1;
+      }
+    }
+  }
+}
+
+void
+pgaccess(uint64 addr, int num, uint64 buffer){
+  
+  uint64 mask = 0;
+  //struct proc *proc = myproc();
+
+  for(int i = 0; i < num; i++){
+    pte_t *pte = walk(kernel_pagetable, buffer + i * PGSIZE, 0);
+    
+    if(PTE_FLAGS(*pte) & PTE_A)
+      mask = mask | (1L << i);
+      
+    *pte = ((*pte & PTE_A) ^ *pte) ^ 0;
+  }
+  copyout(kernel_pagetable, addr, (char *)&mask, sizeof(mask));
+
 }
