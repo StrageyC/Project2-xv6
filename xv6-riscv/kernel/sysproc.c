@@ -6,7 +6,6 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "random.h"
-
 #include "pstat.h"
 
 uint64
@@ -116,4 +115,20 @@ sys_getpinfo(void)
   argaddr(0,  (uint64*) &p); 
   return getpinfo(p);
 
+}
+
+uint64
+sys_pgaccess(){
+
+  uint64 addr;
+  int num;
+  uint64 buffer;
+  argaddr(0, &addr);
+  argint(1, &num);
+  argaddr(2, &buffer);
+
+  pgaccess(addr, num, buffer);
+
+  
+  return 0;
 }

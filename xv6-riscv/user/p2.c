@@ -10,7 +10,7 @@ int
 main(int argc, char **argv)
 {
     
-    settickets(1);
+    settickets(2);
   
 
     

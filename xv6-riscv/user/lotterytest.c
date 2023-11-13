@@ -13,7 +13,7 @@ main(int argc, char **argv)
 
 
    
-    settickets(2);
+    settickets(3);
     struct pstat ps;
 
     

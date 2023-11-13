@@ -496,6 +496,10 @@ scheduler(void)
 
       if(p->state == RUNNABLE) {
 
+         if(which > (p->tickets+temp)){
+          temp += p->tickets;
+        }
+
         if( which <= (p->tickets + temp)){
           // Switch to chosen process.  It is the process's job
           // to release its lock and then reacquire it
@@ -512,10 +516,9 @@ scheduler(void)
           break;
 
         }
-        if(which > (p->tickets+temp)){
-          temp += p->tickets;
-        }
+        
       } 
+     
       release(&p->lock);
       }
 
